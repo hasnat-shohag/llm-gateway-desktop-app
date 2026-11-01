@@ -1,5 +1,14 @@
 import 'dotenv/config'
+import { setDefaultResultOrder } from 'node:dns'
 import { createServer } from './server.js'
+
+// Dual-stack networks without a working IPv6 route fail with ETIMEDOUT when
+// connecting to hosts with both A and AAAA records (e.g. logfare.ai).
+try {
+  setDefaultResultOrder('ipv4first')
+} catch {
+  // Best effort; older Node versions may not support this.
+}
 import { createLogger } from './logger.js'
 import { HealthTracker } from './health.js'
 import type { ProviderConfig } from './types.js'

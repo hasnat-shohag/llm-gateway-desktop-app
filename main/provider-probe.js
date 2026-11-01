@@ -11,6 +11,13 @@
  * not cool a provider down or show up as spend.
  */
 const providersStore = require('./providers-store.js')
+const { Agent } = require('undici')
+
+const probeDispatcher = new Agent({
+  connect: {
+    autoSelectFamily: false,
+  },
+})
 
 const TIMEOUT_MS = 15_000
 const PREVIEW_CHARS = 300
@@ -82,6 +89,7 @@ async function run(name, { model = DEFAULT_MODEL } = {}) {
       headers,
       body,
       signal: controller.signal,
+      dispatcher: probeDispatcher,
     })
     const latencyMs = Date.now() - startedAt
     const contentType = res.headers.get('content-type') ?? ''

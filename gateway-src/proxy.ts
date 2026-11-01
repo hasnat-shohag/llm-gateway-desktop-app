@@ -20,6 +20,9 @@ import { openAIChatUrl, isTranslated, toOpenAIRequest, estimateInputTokens, crea
 const dispatcher = new Agent({
   connections: 64,
   pipelining: 0,
+  connect: {
+    autoSelectFamily: false,
+  },
 })
 
 const OPENAI_PATH_PATTERN = /^\/(?:v1\/)?(?:chat\/completions|completions|responses|embeddings|rerank)$/

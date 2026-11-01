@@ -2,6 +2,12 @@
 /**
  * App entry: window, tray, and the gateway supervisor's lifecycle.
  */
+const { setDefaultResultOrder } = require('node:dns')
+try {
+  setDefaultResultOrder('ipv4first')
+} catch {
+  // Best effort
+}
 const { app, BrowserWindow, Tray, Menu, nativeImage, shell, protocol, net } = require('electron')
 const { join, normalize, sep } = require('node:path')
 const { pathToFileURL } = require('node:url')

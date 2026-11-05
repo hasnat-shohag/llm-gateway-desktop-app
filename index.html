@@ -54,7 +54,7 @@
 </p>
 
 <h2>Install</h2>
-<pre><code>curl -fsSL https://hasnat-shohag.github.io/llm-gateway/install.sh | sh</code></pre>
+<pre><code>curl -fsSL https://hasnat-shohag.github.io/llm-gateway-desktop-app/install.sh | sh</code></pre>
 <p>
   That script adds this repository and installs the package. If you would rather not pipe a
   script to a shell — a reasonable instinct — the steps below are exactly what it runs.
@@ -62,12 +62,12 @@
 
 <h2>Install manually</h2>
 <pre><code>sudo install -d -m 0755 /etc/apt/keyrings
-curl -fsSL https://hasnat-shohag.github.io/llm-gateway/llm-gateway-archive-keyring.gpg \
+curl -fsSL https://hasnat-shohag.github.io/llm-gateway-desktop-app/llm-gateway-archive-keyring.gpg \
   | sudo tee /etc/apt/keyrings/llm-gateway.gpg &gt; /dev/null
 
 sudo tee /etc/apt/sources.list.d/llm-gateway.sources &gt; /dev/null &lt;&lt;'EOF'
 Types: deb
-URIs: https://hasnat-shohag.github.io/llm-gateway
+URIs: https://hasnat-shohag.github.io/llm-gateway-desktop-app
 Suites: stable
 Components: main
 Architectures: amd64
@@ -93,12 +93,12 @@ sudo rm /etc/apt/sources.list.d/llm-gateway.sources /etc/apt/keyrings/llm-gatewa
 <p>
   Only <code>amd64</code> is published here. Every release also ships an AppImage, which
   runs on any reasonably current Linux distribution — see the
-  <a href="https://github.com/hasnat-shohag/llm-gateway/releases">releases page</a>.
+  <a href="https://github.com/hasnat-shohag/llm-gateway-desktop-app/releases">releases page</a>.
 </p>
 
 <footer>
   Source, issues, and documentation:
-  <a href="https://github.com/hasnat-shohag/llm-gateway">github.com/hasnat-shohag/llm-gateway</a>.
+  <a href="https://github.com/hasnat-shohag/llm-gateway-desktop-app">github.com/hasnat-shohag/llm-gateway-desktop-app</a>.
   MIT licensed.
 </footer>
 

@@ -4,30 +4,30 @@ Hash: SHA512
 Architectures: amd64
 Codename: stable
 Components: main
-Date: Sun, 01 Nov 2026 18:22:57 +0000
+Date: Thu, 05 Nov 2026 07:40:30 +0000
 Description: LLM Gateway desktop app for Claude Code
 Label: LLM Gateway
 Origin: LLM Gateway
 Suite: stable
 SHA256:
- 8fc78e1250e8d28beda06e0cf77ffbf8e41e0cfd656fe69e4f910339cc91a784             4932 main/binary-amd64/Packages
- 4ed802aaaa9bd19d4dafecdc1b018cf5f6e6fa8c9a156e632ac02de5f114c617             1449 main/binary-amd64/Packages.gz
+ 330dfa8512983b4794db1dadc60e165c2de7511405c5a6f6146e1d8598fbade7             5930 main/binary-amd64/Packages
+ 610eec8500e5353da1e17e000940c018fde783aa5a7915e32496cd55247fb679             1647 main/binary-amd64/Packages.gz
 SHA512:
- 5e2d79f1b546d773dd31794bae13a3a6cc71ccc59c29812ccd5e06cc357280b9a6efe64fa3ab421399f22ac61797b89bda02052fb743816f595c1b2d31de3629             4932 main/binary-amd64/Packages
- 8b3f8701cfad85293afc459c5c3ad1eac1fea7142adcfd8e31baa232cac4710103fc5616a80e04e0341fa7cfbea13ac5b3398adbe47d7286b655251473fed95e             1449 main/binary-amd64/Packages.gz
+ 055ac4e185e48488156298b3e8cde404fa7aaaa2ad29387bff1426f5d47c92de9f4cb39d4cf551eb4b754834ccfbffafb870462625e7a26561cd789f96d4dc8a             5930 main/binary-amd64/Packages
+ bcf65cfe09282ea53f7614f80a3cd1f2afd42ddd7885266867a52e5559ee4f94fde1e1e0dab0b5ae73a2cf2aa5c87f9a46f10c3eb7e8ea29ee1007a4c8683121             1647 main/binary-amd64/Packages.gz
 -----BEGIN PGP SIGNATURE-----
 
-iQIzBAEBCgAdFiEE5VWusCktKM/e7feOxQ54o2Aar18FAmrng4EACgkQxQ54o2Aa
-r1/EEQ//flZ0H2QCG6dsCRiyjROhhSRnM/t3LoFMF1c0kTnd6i5SYCtt3umo2B/s
-wRmrOkU7cHMMpg16hjf45R2td00i8hfFaSEnXpSyyF4PEWdDR7VPUY/yLlb3qLPb
-3Klcja7RaJnhmttfNs6jKD/R3khUC5XU8rO6HD+/6TDKSr/5vdz7B4tjwVdNE8gd
-XTyQ9IOfwpK1C5b3iFCJfVSMTIv4ZaOEPid5OBsjizIzNXdE+HJWMQnyvHeTRqnm
-pSV8kkbxl0IBddR1c304gg5tqF6VwAjzu66ygi/wugM0S5TlWMCSrXxRuY7wYzQs
-NS83ixGrrU+P0udaLS3qcS9qJ2ZVHDae2Psb4O/xn6BZ5beEDgbd1VPChepz7cvD
-W5ZHgblQfyqSjoxRdBxgQjjSQUQtyljGrpbY1hC/ZU8hP6tSi+CdRaGrf6crd606
-nElIwdmptmU0B4JYUFgP3XyFVdsJ33EAhKO/oGpHDVXcNGWYJV+HqZMFDrMX90Pb
-JAyxa+fOWncT1oEBnpotYdxwvmN8l/Sq13ZvI1nCd5dZak2PyttDBN9B1YD9CXJj
-CvVYFU+b0BxxyPcAIn5IB8yr0adYFgMupW3mAmBil80d3sxhWfoc2vokd5Ngo/mp
-qD1KMoWk5yigJLH+sdIpodeUFAFSnz1AaXwNPBEPTs/y56CCpRg=
-=oyvA
+iQIzBAEBCgAdFiEE5VWusCktKM/e7feOxQ54o2Aar18FAmrsMu4ACgkQxQ54o2Aa
+r18ciA/+IHZBGKPUL0Rh2gAlRuM7/HP+UgLyISt1JbZ8ZwR/jXWoS2+yOs+fVxtQ
+lMTvQpGwr7DmKPThXc8ngc9coqGHjJz0uF2okIXVwQuCuxMb7qvG7hQF0Dg2PQ4Y
+GlW6HfBNef+rb7EgkaWHcK4r9SMQmZEdlaIeMMiJZ6lfkHzOOBezlUAk2VQqDYi6
+6rv/Mi69mu5sx0FqNtIOgQoTfyaIP/h8TUULFhE+G4UlS1RbRJBnWsWw6GBOcptR
+ZivtYhasG7dykb0PrOVXZ3lSceRdYBiZheuiVhsZsE0NeYIH+EfLowhP8iUF8Or8
+lIPJyCnQLbM376fcOJ4RVnOETW+heoTcWelI0qW4A/plmZh1FKxU3v2yFwQrQz7Y
+dfGDnJ/5/fv9lDbow7BCcT0GDuqKeLhPuxpo/qnYxN4nGT9eFUPatpCsTTW0mvrS
+2gA899HbrMpAjP5UjLW4z5v+1CNm/RRuAk712JLgAM7sBrHdbUWS+h53n591XM5+
+Pu4ykSq6ekzb3fz6SuTHwmoZhn/hsCyXhWvIFRolbOxWQyfEVql6i9p8x+RK4eA1
+L/F+3V2tTatn09SU1CpcsxJBvnQccNjckUTD3JUAGWtacJ78P5x6ITE54toF/I7y
+qABrFIYEh3hc+9Zm6QC9TKho76S08gTnpxSfLQyvnKDe3qfwRDw=
+=OCLc
 -----END PGP SIGNATURE-----

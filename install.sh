@@ -2,14 +2,14 @@
 #
 # Add the LLM Gateway APT repository, then install the app.
 #
-#   curl -fsSL https://hasnat-shohag.github.io/llm-gateway/install.sh | sh
+#   curl -fsSL https://hasnat-shohag.github.io/llm-gateway-desktop-app/install.sh | sh
 #
 # This writes two files and installs one package. Read it before piping it to a shell;
-# everything it does is also spelled out at https://hasnat-shohag.github.io/llm-gateway if you would rather run the
+# everything it does is also spelled out at https://hasnat-shohag.github.io/llm-gateway-desktop-app if you would rather run the
 # steps yourself.
 set -eu
 
-REPO_URL="https://hasnat-shohag.github.io/llm-gateway"
+REPO_URL="https://hasnat-shohag.github.io/llm-gateway-desktop-app"
 KEYRING_URL="$REPO_URL/llm-gateway-archive-keyring.gpg"
 KEYRING_PATH="/etc/apt/keyrings/llm-gateway.gpg"
 SOURCES_PATH="/etc/apt/sources.list.d/llm-gateway.sources"

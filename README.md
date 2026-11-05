@@ -101,7 +101,8 @@ The app owns `providers.json`; you should not have to hand-edit it. This is the 
 | `weight` | integer > 0 | Required. Only the `weighted` strategy reads it. |
 | `authStyle` | `x-api-key` \| `bearer` \| `api-key` \| `passthrough` | Defaults to `x-api-key`. `bearer` is what OpenAI, OpenRouter and local servers want; `api-key` is Azure OpenAI's header. |
 | `compatibility` | `openai` \| `claude` \| `both` | Defaults to `claude`. The shape this provider accepts. `both` means it is always served by a byte relay. |
-| `openai` | `{ maxTokensField?, reasoningEffort? }` | Optional, `openai` providers only. Which field carries the token cap (`max_completion_tokens` by default; `max_tokens` for older local servers), and what to send as `reasoning_effort` when Claude Code asks for thinking. No dialog control — edit `providers.json` directly. |
+| `openai` | `{ maxTokensField?, reasoningEffort?, apiType? }` | Optional, `openai` providers only. Which field carries the token cap (`max_completion_tokens` by default; `max_tokens` for older local servers), what to send as `reasoning_effort` when Claude Code asks for thinking, and which OpenAI endpoint to use (`"chat"` or `"responses"` — see [Responses API adapter](#responses-api-adapter) below). No dialog control — edit `providers.json` directly. |
+| `customHeaders` | `Record<string, string>` | Optional. Extra HTTP headers injected into every upstream request for this provider. Useful for proxies or gateways that require custom authentication or client-identity headers. |
 | `pricing` | `{ input?, output?, cacheRead?, cacheWrite? }` | Optional, USD per 1M tokens, every field optional. Without it a translated call records cost `0` rather than Anthropic's prices. |
 | `sanitize` | boolean | Optional, and best left out. |
 
@@ -139,6 +140,55 @@ Some upstreams fingerprint the client and require Claude Code's headers and syst
 others reject a request that carries them. There is no default that suits both, so the gateway
 learns which mode works per provider and remembers it until it restarts. Setting `sanitize` pins
 that decision and skips the learning entirely — useful only if you already know the answer.
+
+### Responses API adapter
+
+Azure-hosted reasoning models (and some other upstreams) reject function-calling tools on
+`/v1/chat/completions` with HTTP 400. Setting `"openai": { "apiType": "responses" }` in a
+provider's config routes its traffic through `/v1/responses` instead. The adapter:
+
+- converts Anthropic Messages into the Responses API input format (`input_text`/`input_image`
+  content blocks, `function_call_output` for tool results);
+- maps `system` to the `instructions` field;
+- translates tools from Anthropic's `input_schema` shape to OpenAI's `parameters` shape;
+- streams Responses API SSE events (`response.output_text.delta`,
+  `response.function_call_arguments.delta`, etc.) back as Anthropic-compatible SSE;
+- handles non-streaming responses the same way.
+
+This is transparent to Claude Code — it still speaks the Anthropic protocol at `127.0.0.1`.
+
+Example provider entry for an [AgentRouter](https://agentrouter.org) endpoint:
+
+```json
+{
+  "name": "AgentRouter",
+  "baseUrl": "https://agentrouter.org",
+  "apiKey": "sk-…",
+  "enabled": true,
+  "weight": 1,
+  "authStyle": "bearer",
+  "compatibility": "openai",
+  "openai": { "apiType": "responses" }
+}
+```
+
+### Auto-injected headers
+
+Providers whose `baseUrl` includes `agentrouter.org` automatically receive the Codex CLI client
+headers (`Originator`, `User-Agent`, `Version`) that AgentRouter requires. No manual configuration
+needed — the gateway injects them on every upstream request.
+
+For other upstreams that need custom identity or auth headers, use the `customHeaders` field in the
+provider config:
+
+```json
+{
+  "customHeaders": {
+    "X-Custom-Auth": "my-token",
+    "X-Client-Id": "my-app"
+  }
+}
+```
 
 ## Settings
 
@@ -244,6 +294,8 @@ Setup tab, is the place to confirm.
   but not an error, so a provider that fails and gets retried elsewhere looks cleaner than it was.
 - Unknown paths are proxied upstream rather than rejected: `app.all('/*')` is the last route, so the
   gateway stays a faithful stand-in for the real API instead of a whitelist of the paths it knows.
+- The Responses API adapter does not support all Responses API event types — `response.reasoning`
+  traces are dropped, matching the Chat Completions adapter behaviour.
 - No renderer tests. The tested surface is the main process, which is where the irreversible writes
   are.
 

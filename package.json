@@ -2,12 +2,12 @@
   "name": "llm-gateway-desktop",
   "version": "0.1.5",
   "description": "Desktop app that runs and manages the local LLM gateway for Claude Code",
-  "homepage": "https://github.com/hasnat-shohag/llm-gateway",
+  "homepage": "https://github.com/hasnat-shohag/llm-gateway-desktop-app",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/hasnat-shohag/llm-gateway.git"
+    "url": "git+https://github.com/hasnat-shohag/llm-gateway-desktop-app.git"
   },
-  "bugs": "https://github.com/hasnat-shohag/llm-gateway/issues",
+  "bugs": "https://github.com/hasnat-shohag/llm-gateway-desktop-app/issues",
   "license": "MIT",
   "author": "Hasnat Shohag",
   "//desktopName": "Electron reads this as the app id / WM_CLASS, which is what links a running window and its tray icon to the installed .desktop entry. linux.syncDesktopName keeps the generated entry's filename in step.",

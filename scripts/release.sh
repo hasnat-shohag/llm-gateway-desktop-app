@@ -11,9 +11,10 @@
 # public, not after.
 #
 # Usage:
-#   scripts/release.sh <patch|minor|major|X.Y.Z> [options]
+#   scripts/release.sh <patch|minor|major|current|X.Y.Z> [options]
 #
 #   patch|minor|major  Bump the current package.json version.
+#   current            Release the version currently in package.json.
 #   X.Y.Z              Use an explicit version instead.
 #   --dry-run          Run every check, print the plan, change nothing.
 #   --yes              Do not prompt before pushing.
@@ -24,9 +25,9 @@ set -euo pipefail
 
 REMOTE=origin
 BRANCH=main
-REPO_SLUG=hasnat-shohag/llm-gateway
+REPO_SLUG=hasnat-shohag/llm-gateway-desktop-app
 PACKAGE_NAME=llm-gateway
-BASE_URL="${APT_BASE_URL:-https://hasnat-shohag.github.io/llm-gateway}"
+BASE_URL="${APT_BASE_URL:-https://hasnat-shohag.github.io/llm-gateway-desktop-app}"
 POLL_SECONDS=30
 POLL_LIMIT=60
 
@@ -47,6 +48,7 @@ usage() {
 while [[ $# -gt 0 ]]; do
   case "$1" in
     patch|minor|major)          BUMP="$1" ;;
+    current)                    BUMP="current" ;;
     # Validated here rather than after the git checks so a typo fails instantly instead
     # of after a fetch. A leading `v` is accepted because the tag is what gets typed.
     [0-9]*|v[0-9]*)
@@ -64,7 +66,7 @@ while [[ $# -gt 0 ]]; do
   shift
 done
 
-[[ -n "$BUMP" ]] || die "give patch, minor, major, or an explicit X.Y.Z (try --help)"
+[[ -n "$BUMP" ]] || die "give patch, minor, major, current, or an explicit X.Y.Z (try --help)"
 
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
@@ -91,6 +93,9 @@ remote_head="$(git rev-parse "$REMOTE/$BRANCH")"
 CURRENT="$(node -p 'require("./package.json").version')"
 
 case "$BUMP" in
+  current)
+    VERSION="$CURRENT"
+    ;;
   patch|minor|major)
     IFS=. read -r major minor patch <<<"$CURRENT"
     [[ "$major$minor$patch" =~ ^[0-9]+$ ]] \
@@ -111,9 +116,11 @@ TAG="v$VERSION"
 
 # apt compares versions, so going backwards produces a repository that offers an upgrade
 # nobody can install.
-newest="$(printf '%s\n%s\n' "$CURRENT" "$VERSION" | sort -V | tail -1)"
-[[ "$newest" == "$VERSION" && "$VERSION" != "$CURRENT" ]] \
-  || die "$VERSION does not come after the current version $CURRENT"
+if [[ "$BUMP" != "current" && "$VERSION" != "$CURRENT" ]]; then
+  newest="$(printf '%s\n%s\n' "$CURRENT" "$VERSION" | sort -V | tail -1)"
+  [[ "$newest" == "$VERSION" ]] \
+    || die "$VERSION does not come after the current version $CURRENT"
+fi
 
 if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
   die "tag $TAG already exists locally"
@@ -173,11 +180,16 @@ fi
 
 # --no-git-tag-version because the commit and tag are made here, together, with a message
 # that matches the repository's conventions.
-npm version "$VERSION" --no-git-tag-version >/dev/null
-git commit --quiet -m "chore: release $TAG" -- package.json package-lock.json
+if [[ "$BUMP" != "current" && "$VERSION" != "$CURRENT" ]]; then
+  npm version "$VERSION" --no-git-tag-version >/dev/null
+  git commit --quiet -m "chore: release $TAG" -- package.json package-lock.json
+  note "committed $(git rev-parse --short HEAD), tagged $TAG"
+  note "to undo before the push: git tag -d $TAG && git reset --hard HEAD~1"
+else
+  note "tagged $TAG"
+  note "to undo before the push: git tag -d $TAG"
+fi
 git tag -a "$TAG" -m "$TAG"
-note "committed $(git rev-parse --short HEAD), tagged $TAG"
-note "to undo before the push: git tag -d $TAG && git reset --hard HEAD~1"
 
 git push --quiet "$REMOTE" "$BRANCH"
 git push --quiet "$REMOTE" "$TAG"

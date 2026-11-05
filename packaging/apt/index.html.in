@@ -93,12 +93,12 @@ sudo rm /etc/apt/sources.list.d/@PACKAGE@.sources /etc/apt/keyrings/@PACKAGE@.gp
 <p>
   Only <code>@ARCH@</code> is published here. Every release also ships an AppImage, which
   runs on any reasonably current Linux distribution — see the
-  <a href="https://github.com/hasnat-shohag/llm-gateway/releases">releases page</a>.
+  <a href="https://github.com/hasnat-shohag/llm-gateway-desktop-app/releases">releases page</a>.
 </p>
 
 <footer>
   Source, issues, and documentation:
-  <a href="https://github.com/hasnat-shohag/llm-gateway">github.com/hasnat-shohag/llm-gateway</a>.
+  <a href="https://github.com/hasnat-shohag/llm-gateway-desktop-app">github.com/hasnat-shohag/llm-gateway-desktop-app</a>.
   MIT licensed.
 </footer>
 

@@ -9,7 +9,7 @@ distribution is an APT repository, `apt upgrade` is the update path for everyone
 
 **Please do not open a public issue.** Use GitHub's private vulnerability reporting:
 
-> [Report a vulnerability](https://github.com/hasnat-shohag/llm-gateway/security/advisories/new)
+> [Report a vulnerability](https://github.com/hasnat-shohag/llm-gateway-desktop-app/security/advisories/new)
 > — or the *Report a vulnerability* button under the repository's **Security** tab.
 
 That opens a private thread visible only to the maintainers. Include:

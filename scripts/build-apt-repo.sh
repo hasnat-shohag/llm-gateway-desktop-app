@@ -26,7 +26,7 @@ KEYRING_NAME=llm-gateway-archive-keyring.gpg
 
 REPO_DIR=""
 KEY_ID="${APT_SIGNING_KEY:-}"
-BASE_URL="${APT_BASE_URL:-https://hasnat-shohag.github.io/llm-gateway}"
+BASE_URL="${APT_BASE_URL:-https://hasnat-shohag.github.io/llm-gateway-desktop-app}"
 SIGN=1
 ADD=()
 

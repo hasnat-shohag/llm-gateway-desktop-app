@@ -84,7 +84,7 @@ jobs:
         env:
           APT_SIGNING_KEY: ${{ secrets.APT_GPG_KEY_ID }}
           GPG_PASSPHRASE: ${{ secrets.APT_GPG_PASSPHRASE }}
-          APT_BASE_URL: https://hasnat-shohag.github.io/llm-gateway
+          APT_BASE_URL: https://hasnat-shohag.github.io/llm-gateway-desktop-app
         run: |
           mkdir -p apt-repo
           rm -rf apt-repo/.git

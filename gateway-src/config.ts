@@ -19,10 +19,12 @@ export const providerSchema = z
      * omitting it silently discarded the value and made pinning dead code.
      */
     sanitize: z.boolean().optional(),
+    customHeaders: z.record(z.string()).optional(),
     /** Dialect quirks for a translated ('openai') provider; the defaults suit
      *  OpenAI and Azure. */
     openai: z
       .object({
+        apiType: z.enum(['chat', 'responses']).optional(),
         maxTokensField: z.enum(['max_tokens', 'max_completion_tokens']).default('max_completion_tokens'),
         reasoningEffort: z.enum(['minimal', 'low', 'medium', 'high']).optional(),
       })

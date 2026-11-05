@@ -62,8 +62,25 @@ export function openAIChatUrl(baseUrl: string): string {
   return url.toString()
 }
 
+/**
+ * Build the responses URL for an OpenAI Responses API provider's `baseUrl`.
+ */
+export function openAIResponsesUrl(baseUrl: string): string {
+  const url = new URL(baseUrl)
+  const path = url.pathname.replace(/\/+$/, '')
+  if (path.includes('/responses')) return url.toString()
+  url.pathname = path === '' ? '/v1/responses' : `${path}/responses`
+  return url.toString()
+}
+
+/** True when this provider uses OpenAI Responses API (`/v1/responses`). */
+export function isOpenAIResponses(provider: Pick<ProviderConfig, 'compatibility' | 'openai'>): boolean {
+  return provider.openai?.apiType === 'responses'
+}
+
 /** True when this provider needs translating rather than relaying. */
-export function isTranslated(provider: Pick<ProviderConfig, 'compatibility'>): boolean {
+export function isTranslated(provider: Pick<ProviderConfig, 'compatibility' | 'openai'>): boolean {
+  if (provider.openai?.apiType === 'responses') return true
   return (provider.compatibility ?? 'claude') === 'openai'
 }
 
@@ -662,6 +679,386 @@ export function createOpenAIToAnthropicStream(model: string, options: OpenAIStre
       // Anthropic normally reports only output_tokens here. The input count has to
       // ride along too, because it is not knowable at message_start time — see
       // proxy.ts's parseLine, which reads both from this event.
+      usage,
+    })
+    send('message_stop', { type: 'message_stop' })
+    finished = true
+    stopPings()
+  }
+
+  return stream
+}
+
+// ---------------------------------------------------------------------------
+// Responses API: Anthropic Messages ⇄ OpenAI /v1/responses
+// ---------------------------------------------------------------------------
+
+/**
+ * Rebuild an Anthropic Messages body as an OpenAI Responses API body (`POST /v1/responses`).
+ */
+export function toOpenAIResponsesRequest(body: unknown, provider: ProviderConfig, model: string): Json {
+  const source = asObject(body) ?? {}
+  const opts: OpenAIOptions = provider.openai ?? {}
+
+  const input: Json[] = []
+  const system = flattenSystem(source.system)
+
+  for (const entry of asArray(source.messages)) {
+    const message = asObject(entry)
+    if (!message) continue
+    const role = message.role === 'assistant' ? 'assistant' : 'user'
+    const direct = asString(message.content)
+
+    if (direct !== undefined) {
+      input.push({ role, content: direct })
+      continue
+    }
+
+    const blocks = asArray(message.content).map((b) => asObject(b)).filter((b): b is Json => b !== null)
+
+    if (role === 'assistant') {
+      let text = ''
+      const toolCalls: Json[] = []
+      for (const block of blocks) {
+        if (block.type === 'text') {
+          text += asString(block.text) ?? ''
+        } else if (block.type === 'tool_use') {
+          toolCalls.push({
+            type: 'function_call',
+            call_id: asString(block.id) ?? `call_${randomUUID().replace(/-/g, '').slice(0, 24)}`,
+            name: asString(block.name) ?? '',
+            arguments: JSON.stringify(block.input ?? {}),
+          })
+        }
+      }
+      if (text.length > 0) {
+        input.push({ role: 'assistant', content: text })
+      }
+      for (const call of toolCalls) {
+        input.push(call)
+      }
+      continue
+    }
+
+    // role === 'user'
+    const parts: Json[] = []
+    for (const block of blocks) {
+      if (block.type === 'tool_result') {
+        input.push({
+          type: 'function_call_output',
+          call_id: asString(block.tool_use_id) ?? '',
+          output: flattenToolResult(block),
+        })
+      } else if (block.type === 'text') {
+        const text = asString(block.text)
+        if (text) parts.push({ type: 'input_text', text })
+      } else if (block.type === 'image') {
+        const url = imageUrl(asObject(block.source))
+        if (url) parts.push({ type: 'input_image', image_url: url })
+      }
+    }
+    if (parts.length > 0) {
+      if (parts.length === 1 && parts[0].type === 'input_text') {
+        input.push({ role: 'user', content: parts[0].text })
+      } else {
+        input.push({ role: 'user', content: parts })
+      }
+    }
+  }
+
+  const out: Json = { model, input }
+  if (system) {
+    out.instructions = system
+  }
+
+  const sourceTools = asArray(source.tools)
+  if (sourceTools.length > 0) {
+    const tools: Json[] = []
+    for (const entry of sourceTools) {
+      const tool = asObject(entry)
+      const name = asString(tool?.name)
+      if (!tool || !name || !asObject(tool.input_schema)) continue
+      const t: Json = {
+        type: 'function',
+        name,
+        parameters: tool.input_schema,
+      }
+      const description = asString(tool.description)
+      if (description) t.description = description
+      tools.push(t)
+    }
+    if (tools.length > 0) out.tools = tools
+  }
+
+  if (typeof source.max_tokens === 'number') {
+    out.max_output_tokens = source.max_tokens
+  }
+
+  if (typeof source.temperature === 'number' && source.temperature !== 1) {
+    out.temperature = source.temperature
+  }
+  if (typeof source.top_p === 'number') out.top_p = source.top_p
+
+  if (asObject(source.thinking) && opts.reasoningEffort) {
+    out.reasoning = { effort: opts.reasoningEffort }
+  }
+
+  if (source.stream === true) {
+    out.stream = true
+  }
+
+  return out
+}
+
+/** Non-streaming Responses API translation. */
+export function fromOpenAIResponsesResponse(json: unknown, model: string): Json {
+  const source = asObject(json) ?? {}
+  const output = asArray(source.output)
+
+  const content: Json[] = []
+  let hasToolUse = false
+
+  for (const entry of output) {
+    const item = asObject(entry)
+    if (!item) continue
+
+    if (item.type === 'message') {
+      for (const part of asArray(item.content)) {
+        const p = asObject(part)
+        const text = asString(p?.text)
+        if (text) content.push({ type: 'text', text })
+      }
+    } else if (item.type === 'function_call') {
+      hasToolUse = true
+      content.push({
+        type: 'tool_use',
+        id: asString(item.call_id) ?? asString(item.id) ?? `toolu_${randomUUID().replace(/-/g, '').slice(0, 24)}`,
+        name: asString(item.name) ?? '',
+        input: parseToolArguments(item.arguments),
+      })
+    }
+  }
+
+  if (content.length === 0) content.push({ type: 'text', text: '' })
+
+  const usage = asObject(source.usage)
+  const input_tokens = typeof usage?.input_tokens === 'number' ? usage.input_tokens : 0
+  const output_tokens = typeof usage?.output_tokens === 'number' ? usage.output_tokens : 0
+
+  return {
+    id: messageId(source.id),
+    type: 'message',
+    role: 'assistant',
+    model,
+    content,
+    stop_reason: hasToolUse ? 'tool_use' : 'end_turn',
+    stop_sequence: null,
+    usage: {
+      input_tokens,
+      output_tokens,
+    },
+  }
+}
+
+/**
+ * A Transform that reads an OpenAI Responses API SSE stream and writes an Anthropic one.
+ */
+export function createResponsesToAnthropicStream(model: string, options: OpenAIStreamOptions = {}): Transform {
+  const pingIntervalMs = options.pingIntervalMs ?? 15_000
+
+  let lineBuffer = ''
+  let currentEvent = ''
+  let started = false
+  let finished = false
+  let id = messageId(undefined)
+  let nextIndex = 0
+  let current: { kind: 'text' | 'tool'; index: number } | null = null
+  let hasToolUse = false
+  let usage: Json = { input_tokens: 0, output_tokens: 0 }
+  let lastPushAt = Date.now()
+  let pingTimer: NodeJS.Timeout | null = null
+
+  const stream = new Transform({
+    transform(chunk: Buffer, _encoding, callback) {
+      const text = lineBuffer + chunk.toString('utf8')
+      const lines = text.split('\n')
+      lineBuffer = lines.pop() ?? ''
+      for (const line of lines) handleLine(line.replace(/\r$/, ''))
+      callback()
+    },
+    flush(callback) {
+      if (lineBuffer) handleLine(lineBuffer.replace(/\r$/, ''))
+      finish()
+      callback()
+    },
+    destroy(err, callback) {
+      stopPings()
+      callback(err)
+    },
+  })
+
+  const send = (event: string, data: Json) => {
+    if (finished) return
+    lastPushAt = Date.now()
+    stream.push(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`)
+  }
+
+  const stopPings = () => {
+    if (pingTimer) clearInterval(pingTimer)
+    pingTimer = null
+  }
+
+  const startPings = () => {
+    if (pingTimer) return
+    pingTimer = setInterval(() => {
+      if (finished || Date.now() - lastPushAt < pingIntervalMs) return
+      send('ping', { type: 'ping' })
+    }, pingIntervalMs)
+    pingTimer.unref()
+  }
+
+  const ensureStart = (sourceId?: string, initialInputTokens = 0) => {
+    if (started) return
+    started = true
+    if (sourceId) id = messageId(sourceId)
+    if (initialInputTokens > 0) {
+      usage.input_tokens = initialInputTokens
+    }
+    startPings()
+    send('message_start', {
+      type: 'message_start',
+      message: {
+        id,
+        type: 'message',
+        role: 'assistant',
+        model,
+        content: [],
+        stop_reason: null,
+        stop_sequence: null,
+        usage: { input_tokens: initialInputTokens, output_tokens: 0 },
+      },
+    })
+  }
+
+  const closeCurrent = () => {
+    if (!current) return
+    send('content_block_stop', { type: 'content_block_stop', index: current.index })
+    current = null
+  }
+
+  const openBlock = (kind: 'text' | 'tool', block: Json) => {
+    closeCurrent()
+    const index = nextIndex++
+    send('content_block_start', { type: 'content_block_start', index, content_block: block })
+    current = { kind, index }
+  }
+
+  const handleLine = (line: string) => {
+    if (line.startsWith('event:')) {
+      currentEvent = line.slice(6).trim()
+      return
+    }
+    if (!line.startsWith('data:')) return
+    const raw = line.slice(5).trim()
+    if (raw === '' || raw === '[DONE]') return
+    try {
+      const parsed = asObject(JSON.parse(raw))
+      if (parsed) handleEvent(currentEvent, parsed)
+    } catch {
+      // Ignore non-json
+    }
+  }
+
+  const handleEvent = (event: string, data: Json) => {
+    if (asObject(data.error)) {
+      ensureStart()
+      send('error', toAnthropicError(data, 500))
+      return
+    }
+
+    const eventType = (asString(data.type) ?? event).trim()
+
+    if (eventType === 'response.created' || eventType === 'response.in_progress') {
+      const resp = asObject(data.response)
+      const u = asObject(resp?.usage)
+      const initialInput = typeof u?.input_tokens === 'number' ? u.input_tokens : 0
+      ensureStart(asString(resp?.id), initialInput)
+      return
+    }
+
+    if (eventType === 'response.output_item.added') {
+      ensureStart()
+      const item = asObject(data.item)
+      if (item?.type === 'function_call') {
+        hasToolUse = true
+        openBlock('tool', {
+          type: 'tool_use',
+          id: asString(item.call_id) ?? asString(item.id) ?? `toolu_${randomUUID().replace(/-/g, '').slice(0, 24)}`,
+          name: asString(item.name) ?? '',
+          input: {},
+        })
+      }
+      return
+    }
+
+    if (eventType === 'response.output_text.delta') {
+      ensureStart()
+      const delta = asString(data.delta)
+      if (delta) {
+        if (current?.kind !== 'text') openBlock('text', { type: 'text', text: '' })
+        send('content_block_delta', {
+          type: 'content_block_delta',
+          index: current!.index,
+          delta: { type: 'text_delta', text: delta },
+        })
+      }
+      return
+    }
+
+    if (eventType === 'response.function_call_arguments.delta') {
+      ensureStart()
+      const delta = asString(data.delta)
+      if (delta && current?.kind === 'tool') {
+        send('content_block_delta', {
+          type: 'content_block_delta',
+          index: current.index,
+          delta: { type: 'input_json_delta', partial_json: delta },
+        })
+      }
+      return
+    }
+
+    if (eventType === 'response.output_item.done' || eventType === 'response.function_call_arguments.done') {
+      closeCurrent()
+      return
+    }
+
+    if (eventType === 'response.completed' || eventType === 'response.done') {
+      ensureStart()
+      const resp = asObject(data.response)
+      const u = asObject(resp?.usage)
+      if (u) {
+        usage = {
+          input_tokens: typeof u.input_tokens === 'number' ? u.input_tokens : 0,
+          output_tokens: typeof u.output_tokens === 'number' ? u.output_tokens : 0,
+        }
+      }
+      finish()
+      return
+    }
+  }
+
+  const finish = () => {
+    if (finished) return
+    ensureStart()
+    if (nextIndex === 0) openBlock('text', { type: 'text', text: '' })
+    closeCurrent()
+    send('message_delta', {
+      type: 'message_delta',
+      delta: {
+        stop_reason: hasToolUse ? 'tool_use' : 'end_turn',
+        stop_sequence: null,
+      },
       usage,
     })
     send('message_stop', { type: 'message_stop' })

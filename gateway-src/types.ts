@@ -27,6 +27,12 @@ export type RequestCompatibility = Exclude<ProviderCompatibility, 'both'>
  */
 export interface OpenAIOptions {
   /**
+   * Endpoint dialect to target:
+   * - 'chat' (default) — standard `/v1/chat/completions` endpoint
+   * - 'responses'      — OpenAI Responses API (`/v1/responses`), required by Azure/OpenAI reasoning models for tools
+   */
+  apiType?: 'chat' | 'responses'
+  /**
    * Which field carries the token cap. OpenAI and Azure reasoning models reject
    * `max_tokens` and require `max_completion_tokens` (accepted by every current
    * model, hence the default); older local servers only know `max_tokens`.
@@ -79,6 +85,8 @@ export interface ProviderConfig {
    * Omit the field to let the gateway auto-learn the correct mode.
    */
   sanitize?: boolean
+  /** Optional custom headers to send upstream with every request to this provider. */
+  customHeaders?: Record<string, string>
 }
 
 export interface ProviderHealth {

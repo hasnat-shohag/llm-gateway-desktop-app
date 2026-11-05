@@ -8,7 +8,20 @@ import { generateRequestId, shouldRetry, removeAuthHeaders, sanitizeHeaders, san
 import { createLogger } from './logger.js'
 import { UsageTracker, calculateCost } from './usage-tracker.js'
 import { SanitizeLearner } from './sanitize-learner.js'
-import { openAIChatUrl, isTranslated, toOpenAIRequest, estimateInputTokens, createOpenAIToAnthropicStream, fromOpenAIResponse, toAnthropicError } from './openai-adapter.js'
+import {
+  openAIChatUrl,
+  openAIResponsesUrl,
+  isOpenAIResponses,
+  isTranslated,
+  toOpenAIRequest,
+  toOpenAIResponsesRequest,
+  estimateInputTokens,
+  createOpenAIToAnthropicStream,
+  createResponsesToAnthropicStream,
+  fromOpenAIResponse,
+  fromOpenAIResponsesResponse,
+  toAnthropicError,
+} from './openai-adapter.js'
 
 // ---------------------------------------------------------------------------
 // Shared undici connection pool
@@ -438,15 +451,18 @@ export function createProxyHandler(
       // Translation happens only when the client speaks Anthropic and the provider
       // does not — an `openai` provider serving an OpenAI-shaped request is an
       // ordinary byte relay.
-      const translate = isClaudeRequest && isTranslated(provider)
+      const isResponses = isClaudeRequest && isOpenAIResponses(provider)
+      const translate = isClaudeRequest && (isTranslated(provider) || isResponses)
       if (translate && !requestedModel) {
         // The adapter has no model to name, and inventing one would 400 upstream.
         return { outcome: 'failover', statusCode: 400 }
       }
       try {
-        const targetUrl = translate
-          ? openAIChatUrl(provider.baseUrl)
-          : buildTargetUrl(provider.baseUrl, url)
+        const targetUrl = isResponses
+          ? openAIResponsesUrl(provider.baseUrl)
+          : translate
+            ? openAIChatUrl(provider.baseUrl)
+            : buildTargetUrl(provider.baseUrl, url)
 
         // `POST /v1/messages/count_tokens` has no Chat Completions equivalent, so
         // proxying it is a guaranteed 404 — and one the failover loop would then
@@ -510,11 +526,23 @@ export function createProxyHandler(
         // with decompression ourselves.
         headers['accept-encoding'] = 'identity'
 
-        const outgoingBody = translate
-          ? toOpenAIRequest(req.body, provider, requestedModel as string)
-          : req.body
-            ? (shouldSanitize && isClaudeRequest ? sanitizeRequestBody(req.body) : req.body)
-            : undefined
+        // AgentRouter requires Codex client fingerprints; auto-inject if not set.
+        if (provider.baseUrl.includes('agentrouter.org')) {
+          headers['Originator'] = 'codex_cli_rs'
+          headers['User-Agent'] = 'codex_cli_rs/0.101.0 (Mac OS 26.0.1; arm64) Apple_Terminal/464'
+          headers['Version'] = '0.101.0'
+        }
+        if (provider.customHeaders) {
+          Object.assign(headers, provider.customHeaders)
+        }
+
+        const outgoingBody = isResponses
+          ? toOpenAIResponsesRequest(req.body, provider, requestedModel as string)
+          : translate
+            ? toOpenAIRequest(req.body, provider, requestedModel as string)
+            : req.body
+              ? (shouldSanitize && isClaudeRequest ? sanitizeRequestBody(req.body) : req.body)
+              : undefined
         const body = outgoingBody ? JSON.stringify(outgoingBody) : undefined
         if (body) {
           headers['content-length'] = String(Buffer.byteLength(body))
@@ -670,6 +698,33 @@ export function createProxyHandler(
           }
 
           if (translate) {
+            if (isResponses) {
+              if (ct.includes('text/event-stream')) {
+                const translator = createResponsesToAnthropicStream(requestedModel as string, {
+                  onWarn: (message, detail) =>
+                    log.warn({ requestId, provider: provider.name, ...detail }, message),
+                })
+                translator.on('error', swallowStreamError)
+                let out: Readable = peeked.stream.pipe(translator)
+                const interceptor = meter()
+                if (interceptor) out = out.pipe(interceptor)
+                await reply.send(out)
+                return { outcome: 'done' }
+              }
+
+              const raw = await collect(peeked.stream)
+              const parsed = parseJson(raw)
+              if (parsed === undefined) {
+                log.warn({ requestId, provider: provider.name, head: raw.slice(0, 120) },
+                  'responses provider returned an unparseable 200 body')
+                reply.code(502)
+                await reply.send(toAnthropicError(raw, 502))
+                return { outcome: 'done' }
+              }
+              await reply.send(fromOpenAIResponsesResponse(parsed, requestedModel as string))
+              return { outcome: 'done' }
+            }
+
             if (ct.includes('text/event-stream')) {
               const translator = createOpenAIToAnthropicStream(requestedModel as string, {
                 onWarn: (message, detail) =>

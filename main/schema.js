@@ -12,7 +12,7 @@ const { pathToFileURL } = require('node:url')
 const { join, dirname } = require('node:path')
 
 /** Canonical key order for serializing providers.json. */
-const PROVIDER_KEY_ORDER = ['name', 'baseUrl', 'apiKey', 'enabled', 'weight', 'authStyle', 'compatibility', 'openai', 'pricing', 'sanitize']
+const PROVIDER_KEY_ORDER = ['name', 'baseUrl', 'apiKey', 'enabled', 'weight', 'authStyle', 'compatibility', 'openai', 'pricing', 'sanitize', 'customHeaders']
 
 const AUTH_STYLES = ['x-api-key', 'bearer', 'api-key', 'passthrough']
 const PROVIDER_COMPATIBILITIES = ['openai', 'claude', 'both']

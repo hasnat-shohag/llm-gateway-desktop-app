@@ -39,16 +39,16 @@ in front of your existing subscription rather than replacing it.
 ## Install
 
 ```bash
-curl -fsSL https://hasnat-shohag.github.io/llm-gateway/install.sh | sh
+curl -fsSL https://hasnat-shohag.github.io/llm-gateway-desktop-app/install.sh | sh
 ```
 
 That adds the signed APT repository and installs the package. If you would rather not pipe a script
-to a shell, the [repository page](https://hasnat-shohag.github.io/llm-gateway) lists the same steps
+to a shell, the [repository page](https://hasnat-shohag.github.io/llm-gateway-desktop-app) lists the same steps
 to run by hand. Either way, later releases arrive through `apt upgrade` like anything else.
 
 Both artifacts are `x86_64` only — the release workflow builds for its own architecture and nothing
 else, so there is no arm64 build to install. For a non-Debian distribution, every release also ships
-an AppImage on the [releases page](https://github.com/hasnat-shohag/llm-gateway/releases):
+an AppImage on the [releases page](https://github.com/hasnat-shohag/llm-gateway-desktop-app/releases):
 `chmod +x` it and run it, with nothing to install and no update channel.
 
 To remove it:
